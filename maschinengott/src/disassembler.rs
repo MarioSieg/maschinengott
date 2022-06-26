@@ -1,7 +1,5 @@
 use iced_x86::{Decoder, DecoderOptions, Formatter, GasFormatter, Instruction};
-use linya::{Bar, Progress};
 use rayon::prelude::*;
-use std::sync::Mutex;
 
 #[repr(u32)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -51,7 +49,7 @@ pub fn disassemble(bytes: &[u8], bitness: Bitness, rip: u64, bin: bool) -> Vec<S
             }
 
             line = format!(
-                "{} | {:0width$} | {:<32} | {}",
+                "{} | {:0width$} | {:<32} | {}\n",
                 line,
                 machine_code,
                 instruction.op_code().op_code_string(),
