@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use iced_x86::{Decoder, DecoderOptions, Formatter, GasFormatter, Instruction};
 use rayon::prelude::*;
 
@@ -9,15 +10,29 @@ pub enum Bitness {
     X64 = 64,
 }
 
-pub fn disassemble(bytes: &[u8], bitness: Bitness, rip: u64, bin: bool) -> Vec<String> {
-    let width = if bin { 64 + 16 } else { 32 };
+pub struct DisassemblerResult {
+    pub assembly: Vec<String>,
+    pub most_used_instructions: Vec<(String, usize)>
+}
 
+pub fn disassemble(bytes: &[u8], bitness: Bitness, rip: u64, use_binary: bool) -> DisassemblerResult {
     let instructions: Vec<Instruction> = {
         let mut decoder = Decoder::with_ip(bitness as u32, bytes, rip, DecoderOptions::NONE);
         decoder.iter().collect()
     };
 
-    let result = instructions
+    let assembly = extract_assembly(&instructions, bytes, rip, use_binary);
+    let most_used_instructions = extract_most_used_instructions(&instructions);
+
+    DisassemblerResult {
+        assembly,
+        most_used_instructions
+    }
+}
+
+fn extract_assembly(instructions: &[Instruction], bytes: &[u8], rip: u64, use_binary: bool) -> Vec<String> {
+    let width = if use_binary { 64 + 16 } else { 32 };
+    instructions
         .par_iter()
         .map(|&instruction| {
             let mut out = String::new();
@@ -31,7 +46,7 @@ pub fn disassemble(bytes: &[u8], bitness: Bitness, rip: u64, bin: bool) -> Vec<S
             options.set_always_show_segment_register(true);
             formatter.format(&instruction, &mut out);
 
-            let mut line = if bin {
+            let mut line = if use_binary {
                 format!("{:016b} ", instruction.ip())
             } else {
                 format!("{:016X} ", instruction.ip())
@@ -41,7 +56,7 @@ pub fn disassemble(bytes: &[u8], bitness: Bitness, rip: u64, bin: bool) -> Vec<S
             let start_index = (instruction.ip() - rip) as usize;
             let instr_bytes = &bytes[start_index..start_index + instruction.len()];
             for b in instr_bytes.iter() {
-                if bin {
+                if use_binary {
                     machine_code = format!("{}{:08b} ", machine_code, b);
                 } else {
                     machine_code = format!("{}{:02X} ", machine_code, b);
@@ -58,7 +73,20 @@ pub fn disassemble(bytes: &[u8], bitness: Bitness, rip: u64, bin: bool) -> Vec<S
             );
             line
         })
-        .collect::<Vec<String>>();
+        .collect::<Vec<String>>()
+}
 
-    result
+fn extract_most_used_instructions(instructions: &[Instruction]) -> Vec<(String, usize)> {
+    let mut most_used = HashMap::<String, usize>::new();
+    for instruction in instructions {
+        let mnemonic = format!("{:?}", instruction.mnemonic()).to_lowercase();
+        if let Some(x) = most_used.get_mut(&mnemonic) {
+            *x += 1;
+        } else {
+            most_used.insert(mnemonic, 1);
+        }
+    }
+    let mut most_used = most_used.into_iter().map(|(k, v)| (k, v)).collect::<Vec<(String, usize)>>();
+    most_used.sort_by(|(_, v1), (_, v2)| v2.cmp(v1));
+    most_used
 }

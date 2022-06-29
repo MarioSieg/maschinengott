@@ -14,13 +14,18 @@ fn main() {
     println!("Writing assembly...");
     if let Some(output_file) = options.output_file {
         let mut output = String::new();
-        for line in data {
+        for line in data.assembly {
             output += &line;
         }
         std::fs::write(output_file, output).expect("Failed to write output file!");
     } else {
-        for line in data {
+        for line in data.assembly {
             println!("{}", line);
         }
+    }
+
+    println!("-- Most used instructions --");
+    for (k, v) in data.most_used_instructions {
+        println!("{:<16} | {}", k, v);
     }
 }
