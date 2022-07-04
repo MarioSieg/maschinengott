@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use iced_x86::{Decoder, DecoderOptions, Formatter, GasFormatter, Instruction};
 use rayon::prelude::*;
+use std::collections::HashMap;
 
 #[repr(u32)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -12,10 +12,16 @@ pub enum Bitness {
 
 pub struct DisassemblerResult {
     pub assembly: Vec<String>,
-    pub most_used_instructions: Vec<(String, usize)>
+    pub most_used_instructions: Vec<(String, usize)>,
+    pub isa_extensions_used: Vec<String>,
 }
 
-pub fn disassemble(bytes: &[u8], bitness: Bitness, rip: u64, use_binary: bool) -> DisassemblerResult {
+pub fn disassemble(
+    bytes: &[u8],
+    bitness: Bitness,
+    rip: u64,
+    use_binary: bool,
+) -> DisassemblerResult {
     let instructions: Vec<Instruction> = {
         let mut decoder = Decoder::with_ip(bitness as u32, bytes, rip, DecoderOptions::NONE);
         decoder.iter().collect()
@@ -23,14 +29,21 @@ pub fn disassemble(bytes: &[u8], bitness: Bitness, rip: u64, use_binary: bool) -
 
     let assembly = extract_assembly(&instructions, bytes, rip, use_binary);
     let most_used_instructions = extract_most_used_instructions(&instructions);
+    let isa_extensions_used = extract_isa_extensions(&instructions);
 
     DisassemblerResult {
         assembly,
-        most_used_instructions
+        most_used_instructions,
+        isa_extensions_used,
     }
 }
 
-fn extract_assembly(instructions: &[Instruction], bytes: &[u8], rip: u64, use_binary: bool) -> Vec<String> {
+fn extract_assembly(
+    instructions: &[Instruction],
+    bytes: &[u8],
+    rip: u64,
+    use_binary: bool,
+) -> Vec<String> {
     let width = if use_binary { 64 + 16 } else { 32 };
     instructions
         .par_iter()
@@ -86,7 +99,23 @@ fn extract_most_used_instructions(instructions: &[Instruction]) -> Vec<(String, 
             most_used.insert(mnemonic, 1);
         }
     }
-    let mut most_used = most_used.into_iter().map(|(k, v)| (k, v)).collect::<Vec<(String, usize)>>();
+    let mut most_used = most_used
+        .into_iter()
+        .map(|(k, v)| (k, v))
+        .collect::<Vec<(String, usize)>>();
     most_used.sort_by(|(_, v1), (_, v2)| v2.cmp(v1));
     most_used
+}
+
+fn extract_isa_extensions(instructions: &[Instruction]) -> Vec<String> {
+    let mut result = Vec::new();
+    for instruction in instructions {
+        for feature in instruction.cpuid_features() {
+            let str = format!("{:?}", feature);
+            if !result.contains(&str) {
+                result.push(str);
+            }
+        }
+    }
+    result
 }

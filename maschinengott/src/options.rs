@@ -9,8 +9,14 @@ use structopt::StructOpt;
 pub(crate) struct Options {
     pub input_file: PathBuf,
 
-    #[structopt(short = "b", long = "bindump")]
+    #[structopt(short = "h", long = "hot_instr")]
+    pub max_hot_instructions: Option<usize>,
+
+    #[structopt(short = "b", long = "bin_dump")]
     pub bin_dump: bool,
+
+    #[structopt(short = "d", long = "dis_asm")]
+    pub disassemble: bool,
 
     #[structopt(short = "o", long = "out")]
     pub output_file: Option<PathBuf>,
