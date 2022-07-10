@@ -1,12 +1,10 @@
-use iced_x86::{Decoder, DecoderOptions, Formatter, GasFormatter, Instruction};
+use iced_x86::{Decoder, DecoderOptions, Formatter, GasFormatter, Instruction, IntelFormatter};
 use rayon::prelude::*;
 use std::collections::HashMap;
 
 #[repr(u32)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Bitness {
-    X16 = 16,
-    X32 = 32,
     X64 = 64,
 }
 
@@ -21,13 +19,14 @@ pub fn disassemble(
     bitness: Bitness,
     rip: u64,
     use_binary: bool,
+    use_intel: bool,
 ) -> DisassemblerResult {
     let instructions: Vec<Instruction> = {
         let mut decoder = Decoder::with_ip(bitness as u32, bytes, rip, DecoderOptions::NONE);
         decoder.iter().collect()
     };
 
-    let assembly = extract_assembly(&instructions, bytes, rip, use_binary);
+    let assembly = extract_assembly(&instructions, bytes, rip, use_binary, use_intel);
     let most_used_instructions = extract_most_used_instructions(&instructions);
     let isa_extensions_used = extract_isa_extensions(&instructions);
 
@@ -43,21 +42,27 @@ fn extract_assembly(
     bytes: &[u8],
     rip: u64,
     use_binary: bool,
+    use_intel: bool,
 ) -> Vec<String> {
     let width = if use_binary { 64 + 16 } else { 32 };
     instructions
         .par_iter()
         .map(|&instruction| {
             let mut out = String::new();
-            let mut formatter = GasFormatter::new();
-            let options = formatter.options_mut();
-            options.set_uppercase_mnemonics(false);
-            options.set_gas_show_mnemonic_size_suffix(true);
-            options.set_first_operand_char_index(8);
-            options.set_space_after_memory_bracket(true);
-            options.set_space_after_operand_separator(true);
-            options.set_always_show_segment_register(true);
-            formatter.format(&instruction, &mut out);
+            if use_intel {
+                let mut formatter = IntelFormatter::new();
+                let options = formatter.options_mut();
+                options.set_uppercase_mnemonics(false);
+                options.set_first_operand_char_index(8);
+                formatter.format(&instruction, &mut out);
+            } else {
+                let mut formatter = GasFormatter::new();
+                let options = formatter.options_mut();
+                options.set_uppercase_mnemonics(false);
+                options.set_gas_show_mnemonic_size_suffix(true);
+                options.set_first_operand_char_index(8);
+                formatter.format(&instruction, &mut out);
+            };
 
             let mut line = if use_binary {
                 format!("{:016b} ", instruction.ip())

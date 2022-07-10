@@ -14,7 +14,13 @@ fn main() {
     let (code, rip, image_size) = pe::read_machine_code(&options.input_file);
 
     println!("Disassembling machine code...");
-    let data = disassembler::disassemble(&code, disassembler::Bitness::X64, rip, options.bin_dump);
+    let data = disassembler::disassemble(
+        &code,
+        disassembler::Bitness::X64,
+        rip,
+        options.bin_dump,
+        options.use_intel_syntax,
+    );
 
     if options.disassemble {
         println!("Writing assembly...");
@@ -26,7 +32,7 @@ fn main() {
             std::fs::write(output_file, output).expect("Failed to write output file!");
         } else {
             for line in &data.assembly {
-                println!("{}", line);
+                print!("{}", line);
             }
         }
     }
