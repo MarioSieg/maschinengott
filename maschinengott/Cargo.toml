@@ -3,14 +3,17 @@ name = "maschinengott"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 iced-x86 = "1.17.0"
 colored = "2.0.0"
-exe = "0.5.4"
 structopt = "0.3.26"
 rayon = "1.5.3"
 console = "0.15.0"
 num-format = "0.4.0"
 indicatif = "0.16.2"
+
+[target.'cfg(unix)'.dependencies]
+object = "0.29.0"
+
+[target.'cfg(windows)'.dependencies]
+exe = "0.5.4"

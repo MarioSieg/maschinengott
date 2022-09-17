@@ -1,9 +1,11 @@
-use exe::pe::{VecPE, PE};
-use exe::{ImageSectionHeader, RVA};
 use std::fs::File;
 use std::path::Path;
 
+#[cfg(target_os = "windows")]
 pub fn read_machine_code(file: &Path) -> (Vec<u8>, u64, u64) {
+    use exe::pe::{VecPE, PE};
+    use exe::{ImageSectionHeader, RVA};
+
     let image = VecPE::from_disk_file(file)
         .unwrap_or_else(|e| panic!("Failed to read PE: {:?}: {}", file, e));
     let target_name = String::from(".text");
@@ -39,4 +41,19 @@ pub fn read_machine_code(file: &Path) -> (Vec<u8>, u64, u64) {
         .expect("Failed to read metadata!")
         .len();
     (Vec::from(data), rip, size)
+}
+
+#[cfg(target_os = "linux")]
+pub fn read_machine_code(file: &Path) -> (Vec<u8>, u64, u64) {
+    use object::{Object, ObjectSection};
+    let bin_data = std::fs::read(file).unwrap_or_else(|e| panic!("Failed to read PE: {:?}: {}", file, e));
+    let obj_file = object::File::parse(&*bin_data).unwrap_or_else(|e| panic!("Failed to read PE: {:?}: {}", file, e));
+    let text = obj_file.section_by_name(".text").expect("Failed to extract text section!");
+    let data = text.data().unwrap();
+    let size = File::open(file)
+        .expect("Failed to read metadata!")
+        .metadata()
+        .expect("Failed to read metadata!")
+        .len();
+    (Vec::from(data), 0, size)
 }
