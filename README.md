@@ -1,5 +1,5 @@
-# Maschinengott (WIP)
-The machine god (German: Maschinengott) is a very fast disassembler for x86-64.
+# Maschinengott
+The machine god (German: Maschinengott) is a very fast terminal disassembler for x86-64.
 It uses all available CPU cores to disassemble huge binaries in a very short amount of time.
 It also shows some information about the machine code - for example the most used assembly instructions
 and the used ISA extensions.
@@ -9,11 +9,13 @@ I created my own little disassembler because the other ones were just too slow w
 (300 MB+) binaries. I also wanted some quick information about used ISA extensions and instructions.
 
 ## Current features:
+ * Works with Windows and Linux binaries
  * PE multithreaded disassembly for executable and dynamic link libraries (.exe and .dll)
  * View most used assembly instructions
  * View total assembly instruction count
  * View used ISA extensions (e. g. AVX, FMA3 or AVX512F)
  * View disassembled code in AT&T or Intel syntax
+ * View instruction encoding
 
 ## Examples
 Example output from a program analysis:<br>
